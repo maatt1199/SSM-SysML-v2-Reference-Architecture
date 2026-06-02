@@ -47,12 +47,13 @@ package SSMCaseStudy {
             }
             requirement def EC1 :> EnvironmentalConstraints {
                 doc /* New hires shall be given access to tool necessary to perform their Job Role.*/
+                subject role : Role;
             }
             requirement def EC2 :> EnvironmentalConstraints {
                 doc /* New hires shall be given access to a tool only when there is availability.*/
-                subject tool : Tool;
+                subject toollicense : License;
                 require constraint {
-                    tool.license.available > 0
+                    toollicense.available > 0
                 }
             }
             #ModelingMetadata::refinement dependency <refinement> from EC2 to EC1;
@@ -61,21 +62,20 @@ package SSMCaseStudy {
             private import SC_Defs::*;
             private import 'CATWOE Library'::*;
             individual newHire : Employee {
-                @CATWOE { :>> 'CATWOE Element' = Elements::Customer; }
                 attribute :>> Employee::name = "New Hire";
             }
             individual manager : Employee {
-                @CATWOE { :>> 'CATWOE Element' = (Elements::Owner, Elements::Actor); }
+                @CATWOE { :>> 'CATWOE Element' = (Elements::Customer, Elements::Actor); }
                 attribute :>> Employee::name = "Manager";
             }
             individual it : Employee {
-                @CATWOE { :>> 'CATWOE Element' = Elements::Actor; }
+                @CATWOE { :>> 'CATWOE Element' = (Elements::Actor, Elements::Owner); }
                 attribute :>> Employee::name = "IT";
             }
             concern resources : OwnerConcern {
                 subject license : License;
                 binding bind license = licenseA;
-                stakeholder :> manager;
+                stakeholder :> it;
             }
             part toolA : Tool {
                 attribute :>> toolName = "ToolA";
@@ -92,11 +92,11 @@ package SSMCaseStudy {
             }
             requirement ec1 : EC1 {
                 doc /* New hires in Role A shall be assigned the apropriate tools and license.*/
+                subject role = roleA;
             }
-            allocation allocate ec1 to roleA;
             requirement ec2 : EC2 {
                 doc /* New hires in Role A shall be assigned a license to Tool A only when there is available capacity.*/
-                subject tool = toolA;
+                subject toollicense = licenseA;
             }
         }
     }
@@ -108,7 +108,6 @@ package SSMCaseStudy {
         package AV_Defs {
             viewpoint def ResourceAllocation {
                 @CATWOE { :>> 'CATWOE Element' = Elements::Worldview; }
-                @Rationale { :>> text = "Elaborate here."; }
             }
             view def LicenseAllocation {
                 doc /* Allocation of Tool Licenses as per Job Role.*/
@@ -116,16 +115,17 @@ package SSMCaseStudy {
             use case def CATWOE_Transformation {
                 @CATWOE { :>> 'CATWOE Element' = Elements::Transformation; }
                 doc /* Specify Transformation details here.*/
+                subject transformationSubject;
             }
             use case def AssignLicense :> CATWOE_Transformation {
                 doc /* Assign an available License to New Employees for the correct Tool based on their Role.*/
-                subject newEmployeeRole : Role;
+                subject newEmployeeRole : Role :>> transformationSubject;
             }
         }
         package AV_Usages {
             private import AV_Defs::*;
             viewpoint licenseManagement : ResourceAllocation {
-                @Rationale { :>> text = "Access and Availability Process shall be recorded."; }
+                @Rationale { :>> text = "Appropriate access should be given to new hires and license availability recorded."; }
                 frame resources;
             }
             view licenseA_Allocation : LicenseAllocation {
@@ -134,7 +134,7 @@ package SSMCaseStudy {
             }
         }
     }
-    package ArchitectureModels {
+    package ArchitectureDescriptions {
         private import 'CATWOE Library'::*;
         private import ArchitectureViewpoints::**;
         private import StakeholderContext::**;
@@ -150,7 +150,7 @@ package SSMCaseStudy {
             }
             item def UnavailableNotice;
             use case assignLicenseA : AssignLicense {
-                subject :>> newEmployeeRole = roleA_NewHire;
+                subject :>> newEmployeeRole : Role = roleA_NewHire;
                 objective {
                     doc /* Allocation of a license for Tool A to New Hire. */
                     require ec2;
@@ -164,6 +164,7 @@ package SSMCaseStudy {
                     perform informUnavailable;
                     perform provisionAccess;
                 }
+                binding bind it = SC_Usages::it;
                 ref part targetRole :> roleA_NewHire;
                 ref part targetLicense :> roleA_NewHire.requiredToolA.license;
                 action reviewAndRequest {
@@ -175,7 +176,7 @@ package SSMCaseStudy {
                 action evaluateAvailability { in incomingRequest : AccessRequest; }
                 action informUnavailable { out notice : UnavailableNotice; }
                 action provisionAccess {
-                    satisfy ec2;
+                    satisfy ec2 by licenseIn;
                     in licenseIn : License;
                     out licenseOut : License;
                     action assign licenseOut.allocated := licenseIn.allocated + 1;
@@ -192,10 +193,26 @@ package SSMCaseStudy {
                 first rejectionReception then done;
                 first provisionAccess then done;
                 binding bind provisionAccess.licenseIn = targetLicense;
+                binding bind provisionAccess.licenseIn = SC_Usages::licenseA;
                 binding bind provisionAccess.licenseOut = targetLicense;
                 binding bind targetRole = reviewAndRequest.newHireIn;
+                first evaluateAvailability then AvailabilityDecision;
             }
         }
     }
+    private import DS_Views::**;
     view CaseStudy : DS_Views::SymbolicViews::gv;
+    view IndividualModelling : DS_Views::SymbolicViews::gv;
+    view Definition : gv;
+    view Usage : gv;
+    view VPs : gv;
+    binding bind StakeholderContext::SC_Usages::roleA = StakeholderContext::SC_Usages::ec1.role;
+    binding bind StakeholderContext::SC_Usages::ec2.toollicense = StakeholderContext::SC_Usages::licenseA;
+    binding bind StakeholderContext::SC_Usages::roleA.requiredToolA = StakeholderContext::SC_Usages::toolA;
+}
+package Presentation {
+    private import SSMCaseStudy::**;
+    private import DS_Views::**;
+    view Fig5 : gv;
+    view EC2Example : gv;
 }
