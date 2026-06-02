@@ -210,9 +210,4 @@ package SSMCaseStudy {
     binding bind StakeholderContext::SC_Usages::ec2.toollicense = StakeholderContext::SC_Usages::licenseA;
     binding bind StakeholderContext::SC_Usages::roleA.requiredToolA = StakeholderContext::SC_Usages::toolA;
 }
-package Presentation {
-    private import SSMCaseStudy::**;
-    private import DS_Views::**;
-    view Fig5 : gv;
-    view EC2Example : gv;
-}
+
